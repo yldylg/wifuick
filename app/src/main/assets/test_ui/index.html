@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>测试</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" type="text/css" href="codemirror/codemirror.css" />
+    <link rel="stylesheet" type="text/css" href="codemirror/material.css" />
+
+    <style type="text/css">
+        html,
+        body,
+        .CodeMirror {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #save,
+        #exec {
+            display: block;
+            position: fixed;
+            bottom: .76923077em;
+            color: #fff;
+            line-height: 1;
+            font-size: 1.07692308em;
+            padding: .51538462em 1.23076923em;
+            z-index: 10000;
+            border-radius: .30769231em;
+            box-shadow: 0 0 0.51538462em rgba(0, 0, 0, .4);
+            cursor: pointer;
+        }
+
+        #save {
+            left: .76923077em;
+            background-color: #0260be;
+        }
+
+        #exec {
+            left: 6.0em;
+            background-color: #be0202;
+        }
+
+    </style>
+</head>
+
+<body>
+    <textarea id="editor"></textarea>
+    <div id="save">save</div>
+    <div id="exec">exec</div>
+
+    <script type="text/javascript" src="zepto.min.js"></script>
+    <script type="text/javascript" src="vconsole.min.js"></script>
+    <script type="text/javascript" src="codemirror/codemirror.js"></script>
+    <script type="text/javascript" src="codemirror/lua.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function() {
+            var vConsole = new window.VConsole({
+                defaultPlugins: ['system', 'network', 'element', 'storage'],
+                maxLogNumber: 4096
+            });
+
+            var editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+                mode: "text/x-lua",
+                theme: 'material',
+                lineNumbers: true
+            });
+
+            $('#save').on('click', function(e) {
+                localStorage.setItem('code-0', editor.getValue());
+            });
+
+            $('#exec').on('click', function(e) {
+                if (window.app) {
+                    var result = app.exec(editor.getValue());
+                    console.log(result);
+                }
+            });
+
+            $(window).on('message', function(e) {
+                console.log(e.data);
+            });
+
+            editor.setValue(localStorage.getItem('code-0') || '');
+        });
+
+    </script>
+</body>
+
+</html>
