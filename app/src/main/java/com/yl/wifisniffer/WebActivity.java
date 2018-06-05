@@ -4,12 +4,15 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.app.Activity;
+import android.os.Handler;
+import android.os.Message;
 import android.view.KeyEvent;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import org.keplerproject.luajava.JavaFunction;
 import org.keplerproject.luajava.LuaException;
@@ -17,7 +20,9 @@ import org.keplerproject.luajava.LuaState;
 
 
 public class WebActivity extends Activity {
+    public static int MSG_TYPE_LUA = 1001;
     private WebView mWeb;
+    private Handler handler;
     private LuaSupport lua;
 
     @Override
@@ -33,6 +38,16 @@ public class WebActivity extends Activity {
         } catch (LuaException e){
             e.printStackTrace();
         }
+
+        handler = new Handler(){
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                if(msg.what == MSG_TYPE_LUA) {
+                    mWeb.loadUrl("javascript:postMessage('" + msg.obj + "','*');");
+                }
+            }
+        };
 
         mWeb.setWebViewClient(new WebViewClient());
         mWeb.setWebChromeClient(new WebChromeClient());
@@ -51,8 +66,8 @@ public class WebActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAppCacheEnabled(true);
 
-        // mWeb.loadUrl("file:///android_asset/ui/index.html");
-        mWeb.loadUrl("http://192.168.8.179:8080/");
+        mWeb.loadUrl("file:///android_asset/ui/index.html");
+        // mWeb.loadUrl("http://192.168.8.179:8080/");
         // lua.eval("require 'import'\nprint(Math:sin(2.3))\n");
     }
 
@@ -92,6 +107,11 @@ public class WebActivity extends Activity {
         return lua.eval(s);
     }
 
+    @JavascriptInterface
+    public void toast(String s, int t) {
+        Toast.makeText(WebActivity.this, s, t).show();
+    }
+
     class JDump extends JavaFunction {
 
         public JDump(LuaState L) {
@@ -118,7 +138,10 @@ public class WebActivity extends Activity {
                     val = stype;
                 out.append(val);
             }
-            mWeb.loadUrl("javascript:postMessage(" + out.toString() + ",'*');");
+            Message msg = new Message();
+            msg.what = MSG_TYPE_LUA;
+            msg.obj = out.toString();
+            handler.sendMessage(msg);
             return 0;
         }
     };
