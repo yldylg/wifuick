@@ -1,8 +1,8 @@
 #APP_ABI := all
-APP_ABI := armeabi-v7a x86 x86_64
+APP_ABI := armeabi-v7a x86
 
 APP_CPPFLAGS += \
-	-D__STDC_CONSTANT_MACROS \
+    -D__STDC_CONSTANT_MACROS \
     -D__STDC_LIMIT_MACROS \
     -D__STDC_FORMAT_MACROS \
     -D__DEBUG__ \
