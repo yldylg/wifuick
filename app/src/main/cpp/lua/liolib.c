@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "lua.h"
 
@@ -686,6 +687,30 @@ static int f_flush (lua_State *L) {
 }
 
 
+static int f_blocking(lua_State *L){
+  int flags, fd, blocking;
+
+  fd = fileno(tofile(L));
+  if(!lua_isboolean(L, 2)) {
+    return 0;
+  }
+  blocking = lua_toboolean(L, 2);
+
+  if((flags=fcntl(fd, F_GETFL, 0)) == -1){
+    return luaL_fileresult(L, errno, NULL);
+  }
+  if(blocking) {
+    flags &= ~O_NONBLOCK;
+  } else {
+    flags |= O_NONBLOCK;
+  }
+  if(fcntl(fd, F_SETFL, flags) == -1){
+    return luaL_fileresult(L, errno, NULL);
+  }
+  return 0;
+}
+
+
 /*
 ** functions for 'io' library
 */
@@ -716,6 +741,7 @@ static const luaL_Reg flib[] = {
   {"seek", f_seek},
   {"setvbuf", f_setvbuf},
   {"write", f_write},
+  {"blocking", f_blocking},
   {"__gc", f_gc},
   {"__tostring", f_tostring},
   {NULL, NULL}
