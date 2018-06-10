@@ -66,7 +66,7 @@ public class WebActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAppCacheEnabled(true);
 
-        mWeb.loadUrl("file:///android_asset/ui/index.html");
+        mWeb.loadUrl("file:///android_asset/test_ui/index.html");
         // mWeb.loadUrl("http://192.168.8.179:8080/");
         // lua.eval("require 'import'\nprint(Math:sin(2.3))\n");
     }

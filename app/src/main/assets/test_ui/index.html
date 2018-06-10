@@ -74,7 +74,7 @@
 
             $('#exec').on('click', function(e) {
                 if (window.app) {
-                    var result = app.exec(editor.getValue());
+                    var result = app.eval(editor.getValue());
                     console.log(result);
                 }
             });
