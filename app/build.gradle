@@ -15,6 +15,9 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            minifyEnabled true
+        }
     }
     sourceSets {
         main {
@@ -24,6 +27,10 @@ android {
     }
     buildToolsVersion '27.0.3'
     productFlavors {
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
