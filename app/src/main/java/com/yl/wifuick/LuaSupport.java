@@ -1,4 +1,4 @@
-package com.yl.wifisniffer;
+package com.yl.wifuick;
 
 
 import java.io.*;

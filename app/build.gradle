@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
     defaultConfig {
-        applicationId "com.yl.wifisniffer"
+        applicationId "com.yl.wifuick"
         minSdkVersion 19
         targetSdkVersion 24
         versionCode 1

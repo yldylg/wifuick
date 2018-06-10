@@ -1,4 +1,4 @@
-package com.yl.wifisniffer;
+package com.yl.wifuick;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
