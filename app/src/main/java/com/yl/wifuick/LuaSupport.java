@@ -1,10 +1,10 @@
 package com.yl.wifuick;
 
 
-import java.io.*;
-
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.os.Handler;
+import android.os.Message;
 import android.widget.Toast;
 
 import org.keplerproject.luajava.JavaFunction;
@@ -12,13 +12,37 @@ import org.keplerproject.luajava.LuaException;
 import org.keplerproject.luajava.LuaState;
 import org.keplerproject.luajava.LuaStateFactory;
 
-public class LuaSupport {
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.util.LinkedList;
+import java.util.List;
+
+public class LuaSupport implements Runnable {
+    public static int MSG_TYPE_LUA = 1001;
+
     public LuaState L;
-    private Context context;
+    private Context ctx;
+    private Handler hdl;
+    private List<String> cmds;
     private StringBuilder output = new StringBuilder();
 
-    public LuaSupport(Context ctx){
-        context = ctx;
+    public LuaSupport(Context ctx, Handler hdl) {
+        this.ctx = ctx;
+        this.hdl = hdl;
+        this.cmds = new LinkedList<>();
+    }
+
+    private synchronized void setCmd(String s) {
+        cmds.add(s);
+    }
+
+    private synchronized String getCmd() {
+        if (cmds.size() > 0) {
+            return cmds.remove(0);
+        } else {
+            return null;
+        }
     }
 
     private static byte[] readAll(InputStream input) throws Exception {
@@ -31,19 +55,19 @@ public class LuaSupport {
         return output.toByteArray();
     }
 
-    public void initLua() {
+    private void initLua() {
         L = LuaStateFactory.newLuaState();
         if (L == null) {
-            Toast.makeText(context, "init lua fail", Toast.LENGTH_LONG).show();
+            Toast.makeText(ctx, "init lua fail", Toast.LENGTH_LONG).show();
             return;
         }
         L.openLibs();
 
         try {
-            L.pushJavaObject(context);
+            L.pushJavaObject(ctx);
             L.setGlobal("activity");
 
-            JavaFunction print = new JavaFunction(L) {
+            new JavaFunction(L) {
                 @Override
                 public int execute() throws LuaException {
                     for (int i = 2; i <= L.getTop(); i++) {
@@ -64,18 +88,54 @@ public class LuaSupport {
                         output.append(val);
                         output.append("\t");
                     }
-                    Toast.makeText(context, output.toString(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ctx, output.toString(), Toast.LENGTH_SHORT).show();
                     return 0;
                 }
-            };
-            print.register("print");
+            }.register("print");
+
+            new JavaFunction(L) {
+                @Override
+                public int execute() throws LuaException {
+                    StringBuilder out = new StringBuilder();
+                    for (int i = 2; i <= L.getTop(); i++) {
+                        int type = L.type(i);
+                        String stype = L.typeName(type);
+                        String val = null;
+                        if (stype.equals("userdata")) {
+                            Object obj = L.toJavaObject(i);
+                            if (obj != null)
+                                val = obj.toString();
+                        } else if (stype.equals("boolean")) {
+                            val = L.toBoolean(i) ? "true" : "false";
+                        } else {
+                            val = L.toString(i);
+                        }
+                        if (val == null)
+                            val = stype;
+                        out.append(val);
+                    }
+                    Message msg = new Message();
+                    msg.what = MSG_TYPE_LUA;
+                    msg.obj = out.toString();
+                    hdl.sendMessage(msg);
+                    return 0;
+                }
+            }.register("jdump");
+
+            new JavaFunction(L) {
+                @Override
+                public int execute() throws LuaException {
+                    L.pushString(getCmd());
+                    return 1;
+                }
+            }.register("getcmd");
 
             JavaFunction assetLoader = new JavaFunction(L) {
                 @Override
                 public int execute() throws LuaException {
                     String name = L.toString(-1);
 
-                    AssetManager am = context.getAssets();
+                    AssetManager am = ctx.getAssets();
                     try {
                         InputStream is = am.open("lua/" + name + ".lua");
                         byte[] bytes = readAll(is);
@@ -99,17 +159,19 @@ public class LuaSupport {
             L.pop(1);                            // package
 
             L.getField(-1, "path");         // package path
-            String customPath = context.getFilesDir() + "/?.lua";
+            String customPath = ctx.getFilesDir() + "/?.lua";
             L.pushString(";" + customPath);         // package path custom
             L.concat(2);                         // package pathCustom
             L.setField(-2, "path");         // package
             L.pop(1);
+            //
+            evalStr("require('main')");
         } catch (Exception e) {
-            Toast.makeText(context,"Cannot override print", Toast.LENGTH_SHORT);
+            Toast.makeText(ctx, "Cannot override print", Toast.LENGTH_SHORT);
         }
     }
 
-    public String eval(String src) {
+    private String evalStr(String src) {
         String res = null;
         try {
             res = evalLua(src);
@@ -149,5 +211,14 @@ public class LuaSupport {
                 return "Yield error";
         }
         return "Unknown error " + error;
+    }
+
+    @Override
+    public void run() {
+        initLua();
+    }
+
+    public void eval(String s) {
+        setCmd(s);
     }
 }

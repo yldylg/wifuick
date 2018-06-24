@@ -14,15 +14,9 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
-import org.keplerproject.luajava.JavaFunction;
-import org.keplerproject.luajava.LuaException;
-import org.keplerproject.luajava.LuaState;
-
 
 public class WebActivity extends Activity {
-    public static int MSG_TYPE_LUA = 1001;
     private WebView mWeb;
-    private Handler handler;
     private LuaSupport lua;
 
     @Override
@@ -30,24 +24,18 @@ public class WebActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_web);
         mWeb = (WebView) findViewById(R.id.wv);
-        lua = new LuaSupport(this);
-        lua.initLua();
 
-        try {
-            new JDump(lua.L).register("jdump");
-        } catch (LuaException e){
-            e.printStackTrace();
-        }
-
-        handler = new Handler(){
+        Handler hdl = new Handler() {
             @Override
             public void handleMessage(Message msg) {
                 super.handleMessage(msg);
-                if(msg.what == MSG_TYPE_LUA) {
+                if (msg.what == LuaSupport.MSG_TYPE_LUA) {
                     mWeb.loadUrl("javascript:postMessage('" + msg.obj + "','*');");
                 }
             }
         };
+        lua = new LuaSupport(this, hdl);
+        new Thread(lua).start();
 
         mWeb.setWebViewClient(new WebViewClient());
         mWeb.setWebChromeClient(new WebChromeClient());
@@ -93,7 +81,7 @@ public class WebActivity extends Activity {
                     }
                 });
         builder.setNegativeButton("取消",
-                new android.content.DialogInterface.OnClickListener() {
+                new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
@@ -104,7 +92,8 @@ public class WebActivity extends Activity {
 
     @JavascriptInterface
     public String eval(String s) {
-        return lua.eval(s);
+        lua.eval(s);
+        return null;
     }
 
     @JavascriptInterface
@@ -112,37 +101,4 @@ public class WebActivity extends Activity {
         Toast.makeText(WebActivity.this, s, t).show();
     }
 
-    class JDump extends JavaFunction {
-
-        public JDump(LuaState L) {
-            super(L);
-        }
-
-        @Override
-        public int execute() throws LuaException {
-            StringBuilder out = new StringBuilder();
-            for (int i = 2; i <= L.getTop(); i++) {
-                int type = L.type(i);
-                String stype = L.typeName(type);
-                String val = null;
-                if (stype.equals("userdata")) {
-                    Object obj = L.toJavaObject(i);
-                    if (obj != null)
-                        val = obj.toString();
-                } else if (stype.equals("boolean")) {
-                    val = L.toBoolean(i) ? "true" : "false";
-                } else {
-                    val = L.toString(i);
-                }
-                if (val == null)
-                    val = stype;
-                out.append(val);
-            }
-            Message msg = new Message();
-            msg.what = MSG_TYPE_LUA;
-            msg.obj = out.toString();
-            handler.sendMessage(msg);
-            return 0;
-        }
-    };
 }
